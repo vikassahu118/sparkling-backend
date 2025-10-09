@@ -1,0 +1,17 @@
+# Ignore node_modules folder
+node_modules/
+
+# Ignore environment files
+.env
+
+# Ignore build/ or dist/ folders
+build/
+dist/
+
+# Ignore log files
+*.log
+
+# Ignore OS / editor files
+.DS_Store
+thumbs.db
+*.swp
