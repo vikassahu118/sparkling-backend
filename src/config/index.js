@@ -5,7 +5,7 @@ dotenv.config();
 // Centralized configuration object
 export const config = {
   port: process.env.PORT,
-  corsOrigin: process.env.CORS_ORIGIN,
+  corsOrigin: "*" ,
   db: {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
