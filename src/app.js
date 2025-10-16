@@ -7,7 +7,7 @@ const app = express();
 
 // --- Core Middlewares ---
 
-// CORS configuration
+// CORS configuration should be first
 app.use(
   cors({
     origin: config.corsOrigin,
@@ -15,16 +15,13 @@ app.use(
   })
 );
 
-// Parse JSON request bodies
-app.use(express.json({ limit: '16kb' }));
+// CORRECTED: Body parsers must be right after CORS and before any routes.
+// This ensures the request body is parsed before it's needed.
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Parse URL-encoded request bodies
-app.use(express.urlencoded({ extended: true, limit: '16kb' }));
-
-// Serve static files (e.g., product images) from a 'public' directory
+// Other middlewares can come after
 app.use(express.static('public'));
-
-// Parse cookies
 app.use(cookieParser());
 
 // --- Health Check Route ---
@@ -36,13 +33,7 @@ app.get('/health', (req, res) => {
 import apiRouter from './api/index.js';
 app.use('/api/v1', apiRouter);
 
-// --- Error Handling Middleware (TODO) ---
-// app.use((err, req, res, next) => {
-//   console.error(err.stack);
-//   res.status(err.statusCode || 500).json({
-//     success: false,
-//     message: err.message || 'Internal Server Error',
-//   });
-// });
+// --- Error Handling Middleware (Future Implementation) ---
+// app.use((err, req, res, next) => { ... });
 
 export { app };

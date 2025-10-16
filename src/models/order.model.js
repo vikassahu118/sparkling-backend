@@ -2,26 +2,32 @@ import { db } from '../config/db.config.js';
 
 export const Order = {
   /**
-   * Finds all orders for a specific customer.
+   * Finds all orders for a specific customer, including details about each product variant.
    */
   findOrdersByCustomerId: async (customerId) => {
+    // CORRECTED QUERY: Joins through product_variants to get product details.
     const query = `
       SELECT
         o.id as order_id,
         o.total_amount,
         o.status,
         o.created_at,
-        json_agg(
-          json_build_object(
-            'product_id', p.id,
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
             'product_name', p.name,
             'quantity', oi.quantity,
-            'price_at_purchase', oi.price_at_purchase
+            'price_at_purchase', oi.price_at_purchase,
+            'color', c.name,
+            'size', s.age_range,
+            'image', pv.image_urls ->> 0
           )
         ) as items
       FROM orders o
       JOIN order_items oi ON o.id = oi.order_id
-      JOIN products p ON oi.product_id = p.id
+      JOIN product_variants pv ON oi.product_variant_id = pv.id
+      JOIN products p ON pv.product_id = p.id
+      JOIN colors c ON pv.color_id = c.id
+      JOIN sizes s ON pv.size_id = s.id
       WHERE o.customer_id = $1
       GROUP BY o.id
       ORDER BY o.created_at DESC;
@@ -32,7 +38,6 @@ export const Order = {
 
   /**
    * Finds all orders in the system for management purposes.
-   * @returns {Promise<Array>} A list of all orders with customer details.
    */
   findAll: async () => {
     const query = `
@@ -49,13 +54,12 @@ export const Order = {
 
   /**
    * Finds a single, detailed order by its ID for management.
-   * @param {string} orderId - The UUID of the order.
-   * @returns {Promise<object|null>} A single detailed order object.
    */
   findById: async (orderId) => {
+    // CORRECTED QUERY: Also joins through product_variants to get item details.
     const query = `
       SELECT
-        o.id as order_id, o.total_amount, o.status, o.created_at, o.payment_type,
+        o.id as order_id, o.total_amount, o.status, o.created_at,
         json_build_object(
             'id', u.id,
             'first_name', u.first_name,
@@ -64,12 +68,13 @@ export const Order = {
         ) as customer,
         sa.address_line_1 || ', ' || sa.city as shipping_address,
         ba.address_line_1 || ', ' || ba.city as billing_address,
-        json_agg(
-          json_build_object(
-            'product_id', p.id,
+        JSON_AGG(
+          JSON_BUILD_OBJECT(
             'product_name', p.name,
             'quantity', oi.quantity,
-            'price_at_purchase', oi.price_at_purchase
+            'price_at_purchase', oi.price_at_purchase,
+            'color', c.name,
+            'size', s.age_range
           )
         ) as items
       FROM orders o
@@ -77,7 +82,10 @@ export const Order = {
       JOIN addresses sa ON o.shipping_address_id = sa.id
       JOIN addresses ba ON o.billing_address_id = ba.id
       JOIN order_items oi ON o.id = oi.order_id
-      JOIN products p ON oi.product_id = p.id
+      JOIN product_variants pv ON oi.product_variant_id = pv.id
+      JOIN products p ON pv.product_id = p.id
+      JOIN colors c ON pv.color_id = c.id
+      JOIN sizes s ON pv.size_id = s.id
       WHERE o.id = $1
       GROUP BY o.id, u.id, sa.id, ba.id;
     `;
@@ -87,9 +95,6 @@ export const Order = {
 
   /**
    * Updates the status of a specific order.
-   * @param {string} orderId - The UUID of the order.
-   * @param {string} status - The new status.
-   * @returns {Promise<object|null>} The updated order object.
    */
   updateStatus: async (orderId, status) => {
     const query = `
@@ -99,4 +104,3 @@ export const Order = {
     return rows[0];
   }
 };
-

@@ -94,6 +94,51 @@ export const User = {
   },
 
   /**
+   * --- NEW FUNCTION ---
+   * Finds all users who have a specific role.
+   * @param {string} roleName - The name of the role to filter by.
+   * @returns {Promise<Array>} A list of users with that role.
+   */
+  findUsersByRole: async (roleName) => {
+    const query = `
+      SELECT u.id, u.first_name, u.last_name, u.email, u.mobile_number, r.name as role_name
+      FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE r.name = $1
+      ORDER BY u.created_at DESC;
+    `;
+    const { rows } = await db.query(query, [roleName]);
+    return rows;
+  },
+  
+/**
+   * --- NEW FUNCTION ---
+   * Deletes a user by their ID.
+   * Prevents deletion if the user is the last remaining admin.
+   * @param {string} userId - The UUID of the user to delete.
+   * @returns {Promise<object|null>} The deleted user object or an error indicator.
+   */
+  deleteById: async (userId) => {
+    // Safety check: Prevent deleting the last admin
+    const adminCheckQuery = `SELECT COUNT(*) FROM users WHERE role_id = (SELECT id FROM roles WHERE name = 'Admin');`;
+    const userRoleQuery = `SELECT role_id FROM users WHERE id = $1;`;
+
+    const { rows: adminCountRows } = await db.query(adminCheckQuery);
+    const { rows: userRoleRows } = await db.query(userRoleQuery, [userId]);
+
+    // Assuming role_id 1 from your database setup is 'Admin'
+    const isAdmin = userRoleRows.length > 0 && userRoleRows[0].role_id === 1; 
+    const adminCount = parseInt(adminCountRows[0].count, 10);
+
+    if (isAdmin && adminCount <= 1) {
+      return { error: 'Cannot delete the last admin user.' };
+    }
+    
+    const query = `DELETE FROM users WHERE id = $1 RETURNING id, email;`;
+    const { rows } = await db.query(query, [userId]);
+    return rows[0];
+  },
+  /**
    * Updates a user's role. Used by Admins.
    */
   updateRole: async (userId, roleId) => {
@@ -106,11 +151,9 @@ export const User = {
     const { rows } = await db.query(query, [roleId, userId]);
     return rows[0];
   },
+
   /**
    * Adds a new address for a user.
-   * @param {string} userId - The user's UUID.
-   * @param {object} addressData - The address details.
-   * @returns {Promise<object>} The newly created address.
    */
   addAddress: async (userId, addressData) => {
     const { addressLine1, addressLine2, city, state, postalCode, country, addressType } = addressData;
@@ -126,8 +169,6 @@ export const User = {
 
   /**
    * Finds all addresses belonging to a specific user.
-   * @param {string} userId - The user's UUID.
-   * @returns {Promise<Array>} A list of the user's addresses.
    */
   findAddressesByUserId: async (userId) => {
     const query = 'SELECT * FROM addresses WHERE user_id = $1;';

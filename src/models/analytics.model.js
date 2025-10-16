@@ -13,7 +13,6 @@ export const Analytics = {
       await db.query('BEGIN');
 
       // Query 1: Calculate Total Revenue and Total Orders
-      // We only count sales from delivered or returned/refunded orders.
       const salesQuery = `
         SELECT
           SUM(total_amount) as total_revenue,
@@ -28,13 +27,15 @@ export const Analytics = {
       const customerResult = await db.query(customerQuery);
       
       // Query 3: Find the top 5 best-selling products by quantity sold
+      // CORRECTED QUERY: Joins through product_variants to get product details.
       const topProductsQuery = `
         SELECT
           p.id,
           p.name,
           SUM(oi.quantity) as total_quantity_sold
         FROM order_items oi
-        JOIN products p ON oi.product_id = p.id
+        JOIN product_variants pv ON oi.product_variant_id = pv.id
+        JOIN products p ON pv.product_id = p.id
         GROUP BY p.id, p.name
         ORDER BY total_quantity_sold DESC
         LIMIT 5;

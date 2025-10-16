@@ -36,6 +36,26 @@ export const createUserByAdmin = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @route GET /api/v1/users
+ * @desc Get a list of users, filtered by role.
+ * @access Private (Admin only)
+ */
+export const getUsersByRole = asyncHandler(async (req, res) => {
+  const { role } = req.query;
+  const allowedRoles = ['Admin', 'Product Manager', 'Order Manager', 'Finance Manager'];
+
+  if (!role || !allowedRoles.includes(role)) {
+    throw new ApiError(400, `A valid role must be provided via query parameter. Allowed roles are: ${allowedRoles.join(', ')}`);
+  }
+
+  const users = await User.findUsersByRole(role);
+  
+  return res
+    .status(200)
+    .json(new ApiResponse(200, users, `Users with role '${role}' fetched successfully.`));
+});
+
+/**
  * @route PATCH /api/v1/users/:id/role
  * @desc Update a user's role.
  * @access Private (Admin only)
@@ -61,8 +81,38 @@ export const updateUserRole = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatedUser, "User role updated successfully."));
 });
 
+/**
+ * --- NEW FUNCTION ---
+ * @route DELETE /api/v1/users/:id
+ * @desc Deletes a user by their ID.
+ * @access Private (Admin only)
+ */
+export const deleteUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  // Prevent an admin from deleting themselves
+  if (req.user.id === id) {
+      throw new ApiError(403, 'Admins cannot delete their own account.');
+  }
 
-// --- NEWLY ADDED FUNCTIONS ---
+  const result = await User.deleteById(id);
+
+  if (!result) {
+    throw new ApiError(404, 'User not found.');
+  }
+  
+  if (result.error) {
+      throw new ApiError(403, result.error);
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { deletedUserId: result.id }, "User deleted successfully."));
+});
+
+
+
+// --- Logged-in User Functions ---
 
 /**
  * @route GET /api/v1/users/me
@@ -95,4 +145,3 @@ export const getAddresses = asyncHandler(async (req, res) => {
     const addresses = await User.findAddressesByUserId(userId);
     return res.status(200).json(new ApiResponse(200, addresses, "Addresses fetched successfully."));
 });
-

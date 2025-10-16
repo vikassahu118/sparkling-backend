@@ -4,10 +4,17 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 export const createProduct = asyncHandler(async (req, res) => {
+  const { name, category, variants, original_price } = req.body;
+  
+  // Add validation for the new structure
+  if (!name || !category || !original_price || !variants || !Array.isArray(variants) || variants.length === 0) {
+    throw new ApiError(400, "Name, category, original_price, and a non-empty variants array are required.");
+  }
+
   const product = await Product.create(req.body);
   return res
     .status(201)
-    .json(new ApiResponse(201, product, 'Product created successfully.'));
+    .json(new ApiResponse(201, product, 'Product and its variants created successfully.'));
 });
 
 export const getAllProducts = asyncHandler(async (req, res) => {
@@ -30,15 +37,15 @@ export const getProductById = asyncHandler(async (req, res) => {
 
 export const updateProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const existingProduct = await Product.findById(id);
-  if (!existingProduct) {
+  const productToUpdate = await Product.findById(id);
+  if (!productToUpdate) {
     throw new ApiError(404, 'Product not found.');
   }
   
-  // Merge existing data with new data
-  const updatedData = { ...existingProduct, ...req.body };
+  // This now only updates the base product details. Variant updates would be a separate flow.
+  const updatedProductData = { ...productToUpdate, ...req.body };
   
-  const product = await Product.update(id, updatedData);
+  const product = await Product.update(id, updatedProductData);
   return res
     .status(200)
     .json(new ApiResponse(200, product, 'Product updated successfully.'));

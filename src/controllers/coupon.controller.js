@@ -4,6 +4,10 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 export const createCoupon = asyncHandler(async (req, res) => {
+  // --- DIAGNOSTIC LOG ---
+  // This will show us the exact content of the request body.
+  console.log('Received request body in controller:', req.body);
+
   const createdBy = req.user.id; // From verifyJWT middleware
   
   // 1. Create the coupon with a 'Pending Approval' status
